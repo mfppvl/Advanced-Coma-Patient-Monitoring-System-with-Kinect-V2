@@ -200,13 +200,13 @@ public class KinectManager : MonoBehaviour
                     //| FaceFrameFeatures.MouthMoved
                     //| FaceFrameFeatures.MouthOpen
                 ;
-                this.faceSource = Microsoft.Kinect.Face.FaceFrameSource.Create(Sensor, 0, faceFrameFeatures);
+                this.faceSource = Microsoft.Kinect.Face.FaceFrameSource.Create(Sensor, 0, faceFrameFeatures);//create face source object
 
                 Sensor.Open();
 
 
                 // open the corresponding readers                
-                this.faceReader = this.faceSource.OpenReader();
+                this.faceReader = this.faceSource.OpenReader();// open face reader object
                 colorReader = Sensor.ColorFrameSource.OpenReader();
                 depthReader = Sensor.DepthFrameSource.OpenReader();
                 infraredReader = Sensor.InfraredFrameSource.OpenReader();
@@ -375,6 +375,7 @@ public class KinectManager : MonoBehaviour
             #region Face process
 
             if (faceReader != null)
+                // reading data from face render  source
                 using (var frame = faceReader.AcquireLatestFrame())
                 {
                     if (frame != null)
