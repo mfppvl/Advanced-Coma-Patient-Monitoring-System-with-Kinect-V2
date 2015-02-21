@@ -4,6 +4,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using System.IO;
 
 public class KinectManager : MonoBehaviour
 {
@@ -17,14 +18,20 @@ public class KinectManager : MonoBehaviour
             0xFF40FF00,
             0xFF808000,
         };
+    
     private const int MapDepthToByte = 8000 / 256;
+    #region Viewers
+    public int MaxFilesCount = 300;
     public GameObject depthView;
     public GameObject bodyIndexView;
     public GameObject infraredView;
     public GameObject bodyView;
     public GameObject faceView;
     public GameObject colorView;
+    
+    #endregion
 
+    #region Buffers
     ushort[] _infraredData;
     ushort[] _depthData;
 
@@ -36,15 +43,58 @@ public class KinectManager : MonoBehaviour
     byte[] bodyIndexArray;
     byte[] infraredArray;
     byte[] faceArray;
+    #endregion
 
+    #region Textures
     Texture2D infraredTexture;
     Texture2D depthTexture;
     Texture2D bodyIndexTexture;
     Texture2D bodyTexture;
     Texture2D colorTexture;
     Texture2D faceTexture;
-    public Color32[] whitePixels;
+    #endregion
+    string WorkingDir = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData)+"\\KinectSupervision\\";
 
+    #region FileName collections
+    List<string> infraredFiles= new List<string>();
+    List<string> depthFiles = new List<string>();
+    List<string> bodyIndexFiles = new List<string>();
+    List<string> bodyFiles = new List<string>();
+    List<string> colorFiles = new List<string>();
+    List<string> faceFiles = new List<string>();
+    #endregion
+
+
+
+    #region Kinect objects
+    Dictionary<Windows.Kinect.JointType, CameraSpacePoint> lastBodyFrame = new Dictionary<JointType,CameraSpacePoint>();
+    Dictionary<Windows.Kinect.JointType, float> SkeletonThreasholds = new Dictionary<JointType, float>();
+    public float AnkleLeft =0;
+    public float AnkleRight =0;
+    public float ElbowLeft =0;
+    public float ElbowRight =0;
+    public float FootLeft =0;
+    public float FootRight =0;
+    public float HandLeft =0;
+    public float HandRight =0;
+    public float HandTipLeft =0;
+    public float HandTipRight =0;
+    public float Head =0;
+    public float HipLeft =0;
+    public float HipRight =0;
+    public float KneeLeft =0;
+    public float KneeRight =0;
+    public float Neck =0;
+    public float ShoulderLeft =0;
+    public float ShoulderRight =0;
+    public float SpineBase =0;
+    public float SpineMid =0;
+    public float SpineShoulder =0;
+    public float ThumbLeft =0;
+    public float ThumbRight =0;
+    public float WristLeft =0;
+    public float WristRight =0;
+    
     Windows.Kinect.KinectSensor Sensor;
     Windows.Kinect.ColorFrameReader colorReader;
     Windows.Kinect.DepthFrameReader depthReader;
@@ -58,10 +108,69 @@ public class KinectManager : MonoBehaviour
     Windows.Kinect.FrameDescription description;
     Windows.Kinect.CoordinateMapper mapper;
     Windows.Kinect.ColorSpacePoint[] colorSpace;
+    #endregion
     // Use this for initialization
     void Start()
     {
+        if (!System.IO.Directory.Exists(WorkingDir))
+        {
+            System.IO.Directory.CreateDirectory(WorkingDir);
+        }
+        SkeletonThreasholds.Add(Windows.Kinect.JointType.AnkleLeft, AnkleLeft);
+        SkeletonThreasholds.Add(Windows.Kinect.JointType.AnkleRight, AnkleRight);
+        SkeletonThreasholds.Add(Windows.Kinect.JointType.ElbowLeft, ElbowLeft);
+        SkeletonThreasholds.Add(Windows.Kinect.JointType.ElbowRight, ElbowRight);
+        SkeletonThreasholds.Add(Windows.Kinect.JointType.FootLeft, FootLeft);
+        SkeletonThreasholds.Add(Windows.Kinect.JointType.FootRight, FootRight);
+        SkeletonThreasholds.Add(Windows.Kinect.JointType.HandLeft, HandLeft);
+        SkeletonThreasholds.Add(Windows.Kinect.JointType.HandRight, HandRight);
+        SkeletonThreasholds.Add(Windows.Kinect.JointType.HandTipLeft, HandTipLeft);
+        SkeletonThreasholds.Add(Windows.Kinect.JointType.HandTipRight, HandTipRight);
+        SkeletonThreasholds.Add(Windows.Kinect.JointType.Head, Head);
+        SkeletonThreasholds.Add(Windows.Kinect.JointType.HipLeft, HipLeft);
+        SkeletonThreasholds.Add(Windows.Kinect.JointType.HipRight, HipRight);
+        SkeletonThreasholds.Add(Windows.Kinect.JointType.KneeLeft, KneeLeft);
+        SkeletonThreasholds.Add(Windows.Kinect.JointType.KneeRight, KneeRight);
+        SkeletonThreasholds.Add(Windows.Kinect.JointType.Neck, Neck);
+        SkeletonThreasholds.Add(Windows.Kinect.JointType.ShoulderLeft, ShoulderLeft);
+        SkeletonThreasholds.Add(Windows.Kinect.JointType.ShoulderRight, ShoulderRight);
+        SkeletonThreasholds.Add(Windows.Kinect.JointType.SpineBase, SpineBase);
+        SkeletonThreasholds.Add(Windows.Kinect.JointType.SpineMid, SpineMid);
+        SkeletonThreasholds.Add(Windows.Kinect.JointType.SpineShoulder, SpineShoulder);
+        SkeletonThreasholds.Add(Windows.Kinect.JointType.ThumbLeft, ThumbLeft);
+        SkeletonThreasholds.Add(Windows.Kinect.JointType.ThumbRight, ThumbRight);
+        SkeletonThreasholds.Add(Windows.Kinect.JointType.WristLeft, WristLeft);
+        SkeletonThreasholds.Add(Windows.Kinect.JointType.WristRight, WristRight);
 
+
+        lastBodyFrame.Add(Windows.Kinect.JointType.AnkleLeft,new CameraSpacePoint());
+        lastBodyFrame.Add(Windows.Kinect.JointType.AnkleRight, new CameraSpacePoint());
+        lastBodyFrame.Add(Windows.Kinect.JointType.ElbowLeft, new CameraSpacePoint());
+        lastBodyFrame.Add(Windows.Kinect.JointType.ElbowRight, new CameraSpacePoint());
+        lastBodyFrame.Add(Windows.Kinect.JointType.FootLeft, new CameraSpacePoint());
+        lastBodyFrame.Add(Windows.Kinect.JointType.FootRight, new CameraSpacePoint());
+        lastBodyFrame.Add(Windows.Kinect.JointType.HandLeft, new CameraSpacePoint());
+        lastBodyFrame.Add(Windows.Kinect.JointType.HandRight, new CameraSpacePoint());
+        lastBodyFrame.Add(Windows.Kinect.JointType.HandTipLeft, new CameraSpacePoint());
+        lastBodyFrame.Add(Windows.Kinect.JointType.HandTipRight, new CameraSpacePoint());
+        lastBodyFrame.Add(Windows.Kinect.JointType.Head, new CameraSpacePoint());
+        lastBodyFrame.Add(Windows.Kinect.JointType.HipLeft, new CameraSpacePoint());
+        lastBodyFrame.Add(Windows.Kinect.JointType.HipRight, new CameraSpacePoint());
+        lastBodyFrame.Add(Windows.Kinect.JointType.KneeLeft, new CameraSpacePoint());
+        lastBodyFrame.Add(Windows.Kinect.JointType.KneeRight, new CameraSpacePoint());
+        lastBodyFrame.Add(Windows.Kinect.JointType.Neck, new CameraSpacePoint());
+        lastBodyFrame.Add(Windows.Kinect.JointType.ShoulderLeft, new CameraSpacePoint());
+        lastBodyFrame.Add(Windows.Kinect.JointType.ShoulderRight, new CameraSpacePoint());
+        lastBodyFrame.Add(Windows.Kinect.JointType.SpineBase, new CameraSpacePoint());
+        lastBodyFrame.Add(Windows.Kinect.JointType.SpineMid, new CameraSpacePoint());
+        lastBodyFrame.Add(Windows.Kinect.JointType.SpineShoulder, new CameraSpacePoint());
+        lastBodyFrame.Add(Windows.Kinect.JointType.ThumbLeft, new CameraSpacePoint());
+        lastBodyFrame.Add(Windows.Kinect.JointType.ThumbRight, new CameraSpacePoint());
+        lastBodyFrame.Add(Windows.Kinect.JointType.WristLeft, new CameraSpacePoint());
+        lastBodyFrame.Add(Windows.Kinect.JointType.WristRight, new CameraSpacePoint());
+        
+        
+        
     }
 
     // Update is called once per frame
@@ -144,6 +253,7 @@ public class KinectManager : MonoBehaviour
                             frame.CopyConvertedFrameDataToArray(colorArray, Windows.Kinect.ColorImageFormat.Rgba);
                             colorTexture.LoadRawTextureData(colorArray);
                             colorTexture.Apply();
+                            SaveToFile(colorTexture, colorFiles);
                             colorView.renderer.material.mainTexture = colorTexture;
                         }
                     }
@@ -289,6 +399,26 @@ public class KinectManager : MonoBehaviour
 
         }
     }
+    private void SaveToFile(Texture2D texture, List<string> files)
+    {
+        
+        //int tm1 = Environment.TickCount;
+        if (files.Count >= MaxFilesCount)
+        {
+            File.Delete(files[0]);
+            files.RemoveAt(0);
+        }
+
+        var filename = WorkingDir + "\\" + Guid.NewGuid().ToString() + ".jpg";
+        files.Add(filename);
+        Application.CaptureScreenshot(filename);
+        //using (var fs = new FileStream(filename, FileMode.Create, FileAccess.Write))
+        //{
+        //    var b = texture.EncodeToJPG(60);
+        //    fs.Write(b, 0, b.Length);
+        //}
+//        Debug.Log(string.Format("encoding time {0}", Environment.TickCount - tm1));
+    }
     private void UpdateInfraredData()
     {
         int index = 0;
@@ -348,6 +478,124 @@ public class KinectManager : MonoBehaviour
 
         }
     }
+    private void UpdateBodyData()
+    {
+        if (bodyTexture == null)
+            return;
+        // convert body index to a visual representation
+        for (int i = 0; i < bodyIndexArray.Length; i += 4)
+        {
+
+            // the BodyColor array has been sized to match
+            // BodyFrameSource.BodyCount
+            if (_BodyIndexData[i / 4] != 255)
+            {
+                this.bodyArray[i] = (byte)BodyColor[_BodyIndexData[i / 4]];
+                this.bodyArray[i + 1] = (byte)BodyColor[_BodyIndexData[i / 4]];
+                this.bodyArray[i + 2] = (byte)BodyColor[_BodyIndexData[i / 4]];
+                this.bodyArray[i + 3] = (byte)BodyColor[_BodyIndexData[i / 4]];
+            }
+            else
+            {
+                this.bodyArray[i] = 255;
+                this.bodyArray[i + 1] = 255;
+                this.bodyArray[i + 2] = 255;
+                this.bodyArray[i + 3] = 255;
+
+            }
+
+
+        }
+        bodyTexture.LoadRawTextureData(bodyArray);
+        foreach (var body in bodies)
+        {
+            if (body.IsTracked)
+            {
+                for (int i = 0; i < body.Joints.Count; i++)
+                {
+                    JointType current = (JointType)i;
+                    JointType parent = GetParentJoint((JointType)i);
+                    if (body.Joints[(JointType)i].TrackingState != TrackingState.NotTracked &&
+                       body.Joints[current].TrackingState != TrackingState.NotTracked)
+                    {
+                        Vector2 posParent = MapSpacePointToDepthCoords(body.Joints[parent].Position);
+                        Vector2 posJoint = MapSpacePointToDepthCoords(body.Joints[current].Position);
+
+                        if (posParent != Vector2.zero && posJoint != Vector2.zero)
+                        {
+                            //Color lineColor = playerJointsTracked[i] && playerJointsTracked[parent] ? Color.red : Color.yellow;
+                            DrawLine(bodyTexture, (int)posParent.x, (int)posParent.y, (int)posJoint.x, (int)posJoint.y, Color.yellow);
+
+                        }
+                    }
+                }
+                if (lastBodyFrame != null)
+
+                    CheckJoints(body);
+
+
+                UpdateJointValues(body);
+            }
+            bodyTexture.Apply();
+        }
+        //aTexture.Apply();
+    }
+
+    private bool CheckJoints(Body newBody)
+    {
+        Debug.Log("check events");
+        foreach (var joint in newBody.Joints)
+        {
+            if (joint.Value.TrackingState != TrackingState.NotTracked)
+            {
+                
+                if (Math.Abs(Math.Abs(joint.Value.Position.X) - Math.Abs(lastBodyFrame[joint.Key].X)) >
+                    SkeletonThreasholds[joint.Key])
+                {
+                    Debug.Log(string.Format("Alert! Joint {0} old value X = {1}, new value X = {2}", joint.Key,
+                        lastBodyFrame[joint.Key].X,
+                        joint.Value.Position.X));
+                 
+                    return true;
+                }
+                if (Math.Abs(Math.Abs(joint.Value.Position.Y) - Math.Abs(lastBodyFrame[joint.Key].Y)) >
+                    SkeletonThreasholds[joint.Key])
+                {
+                    Debug.Log(string.Format("Alert! Joint {0} old value Y = {1}, new value Y = {2}", joint.Key,
+                        lastBodyFrame[joint.Key].Y,
+                        joint.Value.Position.Y));
+                    
+                    return true;
+                }
+                if (Math.Abs(Math.Abs(joint.Value.Position.Z) - Math.Abs(lastBodyFrame[joint.Key].Z)) >
+                    SkeletonThreasholds[joint.Key])
+                {
+                    Debug.Log(string.Format("Alert! Joint {0} old value Z = {1}, new value Z = {2}", joint.Key,
+                        lastBodyFrame[joint.Key].Z,
+                        joint.Value.Position.Z));
+                    
+                    return true;
+                }
+            }
+        }
+        
+        return false;
+    }
+
+    private void UpdateJointValues(Body newbody)
+    {
+        foreach (var joint in newbody.Joints)
+        {
+            JointType key = joint.Key;
+            lastBodyFrame[key] = new CameraSpacePoint()
+            {
+                X = joint.Value.Position.X,
+                Y = joint.Value.Position.Y,
+                Z = joint.Value.Position.Z
+            };
+        }
+    }
+
 
     private unsafe void Resize(int oldWidth, int oldHeight, int newWidth, int newHeight)
     {
@@ -424,7 +672,7 @@ public class KinectManager : MonoBehaviour
         Marshal.FreeHGlobal(destImg);
         Marshal.FreeHGlobal(sourceImg);
     }
-    public void DrawLine(Texture2D a_Texture, int x1, int y1, int x2, int y2, Color a_Color)
+    private void DrawLine(Texture2D a_Texture, int x1, int y1, int x2, int y2, Color a_Color)
     {
 
         int width = a_Texture.width;
@@ -499,65 +747,8 @@ public class KinectManager : MonoBehaviour
         }
 
     }
-
-    private void UpdateBodyData()
-    {
-        if (bodyTexture == null)
-            return;
-        // convert body index to a visual representation
-        for (int i = 0; i < bodyIndexArray.Length; i += 4)
-        {
-
-            // the BodyColor array has been sized to match
-            // BodyFrameSource.BodyCount
-            if (_BodyIndexData[i / 4] != 255)
-            {
-                this.bodyArray[i] = (byte)BodyColor[_BodyIndexData[i / 4]];
-                this.bodyArray[i + 1] = (byte)BodyColor[_BodyIndexData[i / 4]];
-                this.bodyArray[i + 2] = (byte)BodyColor[_BodyIndexData[i / 4]];
-                this.bodyArray[i + 3] = (byte)BodyColor[_BodyIndexData[i / 4]];
-            }
-            else
-            {
-                this.bodyArray[i] = 255;
-                this.bodyArray[i + 1] = 255;
-                this.bodyArray[i + 2] = 255;
-                this.bodyArray[i + 3] = 255;
-
-            }
-
-
-        }
-        bodyTexture.LoadRawTextureData(bodyArray);
-        foreach (var body in bodies)
-        {
-
-            if (body.IsTracked)
-            {
-                for (int i = 0; i < body.Joints.Count; i++)
-                {
-                    JointType current = (JointType)i;
-                    JointType parent = GetParentJoint((JointType)i);
-                    if (body.Joints[(JointType)i].TrackingState != TrackingState.NotTracked &&
-                       body.Joints[current].TrackingState != TrackingState.NotTracked)
-                    {
-                        Vector2 posParent = MapSpacePointToDepthCoords(body.Joints[parent].Position);
-                        Vector2 posJoint = MapSpacePointToDepthCoords(body.Joints[current].Position);
-
-                        if (posParent != Vector2.zero && posJoint != Vector2.zero)
-                        {
-                            //Color lineColor = playerJointsTracked[i] && playerJointsTracked[parent] ? Color.red : Color.yellow;
-                            DrawLine(bodyTexture, (int)posParent.x, (int)posParent.y, (int)posJoint.x, (int)posJoint.y, Color.yellow);
-
-                        }
-                    }
-                }
-            }
-            bodyTexture.Apply();
-        }
-        //aTexture.Apply();
-    }
-    public JointType GetParentJoint(JointType joint)
+  
+    private JointType GetParentJoint(JointType joint)
     {
         switch (joint)
         {
@@ -593,7 +784,7 @@ public class KinectManager : MonoBehaviour
 
         return (JointType)((int)joint - 1);
     }
-    public Vector2 MapSpacePointToDepthCoords(CameraSpacePoint spacePos)
+    private Vector2 MapSpacePointToDepthCoords(CameraSpacePoint spacePos)
     {
         Vector2 vPoint = Vector2.zero;
         CameraSpacePoint camPoint = new CameraSpacePoint();

@@ -10,3 +10,15 @@ C:\Users\Micha_000\Documents\KinectSupervision\obj\Debug\Assembly-CSharp.pdb
 C:\Users\Micha_000\Documents\KinectSupervision\Temp\bin\Debug\Assembly-CSharp.dll
 C:\Users\Micha_000\Documents\KinectSupervision\Temp\bin\Debug\Assembly-CSharp.pdb
 C:\Users\Micha_000\Documents\KinectSupervision\Temp\bin\Debug\Assembly-CSharp-firstpass.pdb
+C:\Users\Micha_000\Documents\GitHub\Advanced-Coma-Patient-Monitoring-System-with-Kinect-V2\KinectSupervision\obj\Debug\Assembly-CSharp.dll
+C:\Users\Micha_000\Documents\GitHub\Advanced-Coma-Patient-Monitoring-System-with-Kinect-V2\KinectSupervision\obj\Debug\Assembly-CSharp.pdb
+C:\Users\Micha_000\Documents\GitHub\Advanced-Coma-Patient-Monitoring-System-with-Kinect-V2\KinectSupervision\obj\Debug\Assembly-CSharp-vs.csprojResolveAssemblyReference.cache
+C:\Users\Micha_000\Documents\GitHub\Advanced-Coma-Patient-Monitoring-System-with-Kinect-V2\KinectSupervision\Temp\bin\Debug\Assembly-CSharp.dll
+C:\Users\Micha_000\Documents\GitHub\Advanced-Coma-Patient-Monitoring-System-with-Kinect-V2\KinectSupervision\Temp\bin\Debug\Assembly-CSharp.pdb
+C:\Users\Micha_000\Documents\GitHub\Advanced-Coma-Patient-Monitoring-System-with-Kinect-V2\KinectSupervision\Temp\bin\Debug\UnityEditor.dll
+C:\Users\Micha_000\Documents\GitHub\Advanced-Coma-Patient-Monitoring-System-with-Kinect-V2\KinectSupervision\Temp\bin\Debug\UnityEngine.dll
+C:\Users\Micha_000\Documents\GitHub\Advanced-Coma-Patient-Monitoring-System-with-Kinect-V2\KinectSupervision\Temp\bin\Debug\Mono.Cecil.dll
+C:\Users\Micha_000\Documents\GitHub\Advanced-Coma-Patient-Monitoring-System-with-Kinect-V2\KinectSupervision\Temp\bin\Debug\nunit.framework.dll
+C:\Users\Micha_000\Documents\GitHub\Advanced-Coma-Patient-Monitoring-System-with-Kinect-V2\KinectSupervision\Temp\bin\Debug\Unity.DataContract.dll
+C:\Users\Micha_000\Documents\GitHub\Advanced-Coma-Patient-Monitoring-System-with-Kinect-V2\KinectSupervision\Temp\bin\Debug\ICSharpCode.NRefactory.dll
+C:\Users\Micha_000\Documents\GitHub\Advanced-Coma-Patient-Monitoring-System-with-Kinect-V2\KinectSupervision\Temp\bin\Debug\Assembly-CSharp-firstpass.pdb
