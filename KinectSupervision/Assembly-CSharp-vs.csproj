@@ -26,7 +26,6 @@
     <WarningLevel>4</WarningLevel>
     <NoWarn>0169</NoWarn>
     <Prefer32Bit>false</Prefer32Bit>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -51,7 +50,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Assets\Scripts\KinectScript.cs" />
+    <Compile Include="Assets\Scripts\KinectManager.cs" />
     <None Include="Assets\Plugins\x86\NuiDatabase\HDFaceTracker\ViewModel\left.p.txt" />
     <None Include="Assets\Plugins\x86\NuiDatabase\HDFaceTracker\EvalModel\right.p.txt" />
     <None Include="Assets\Plugins\x86_64\NuiDatabase\HDFaceTracker\EvalModel\right.p.txt" />

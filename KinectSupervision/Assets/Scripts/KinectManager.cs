@@ -5,7 +5,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 
-public class KinectScript : MonoBehaviour
+public class KinectManager : MonoBehaviour
 {
 
     private static readonly uint[] BodyColor =
@@ -19,7 +19,7 @@ public class KinectScript : MonoBehaviour
         };
     private const int MapDepthToByte = 8000 / 256;
     public GameObject depthView;
-    public GameObject bodyIndexView;    
+    public GameObject bodyIndexView;
     public GameObject infraredView;
     public GameObject bodyView;
     public GameObject faceView;
@@ -190,8 +190,7 @@ public class KinectScript : MonoBehaviour
                                 //colorSpace = new Windows.Kinect.ColorSpacePoint[frame.FrameDescription.LengthInPixels];
                                 depthTexture = new Texture2D(frame.FrameDescription.Width, frame.FrameDescription.Height, TextureFormat.RGBA32, false);
                                 depthArray = new byte[4 * frame.FrameDescription.Width * frame.FrameDescription.Height];
-                                bodyTexture = new Texture2D(frame.FrameDescription.Width, frame.FrameDescription.Height, TextureFormat.RGBA32, false);
-                                whitePixels = bodyTexture.GetPixels32();
+
                             }
                             if (depthView != null)
                             {
@@ -224,6 +223,9 @@ public class KinectScript : MonoBehaviour
                                 //colorSpace = new Windows.Kinect.ColorSpacePoint[frame.FrameDescription.LengthInPixels];
                                 bodyIndexTexture = new Texture2D(frame.FrameDescription.Width, frame.FrameDescription.Height, TextureFormat.RGBA32, false);
                                 bodyIndexArray = new byte[frame.FrameDescription.Width * frame.FrameDescription.Height * 4];
+                                bodyTexture = new Texture2D(frame.FrameDescription.Width, frame.FrameDescription.Height, TextureFormat.RGBA32, false);
+                                bodyArray = new byte[frame.FrameDescription.Width * frame.FrameDescription.Height * 4];
+
                             } if (bodyIndexView != null)
                             {
                                 frame.CopyFrameDataToArray(_BodyIndexData);
@@ -255,7 +257,7 @@ public class KinectScript : MonoBehaviour
                                 bodyView.renderer.material.mainTexture = bodyTexture;
                             }
                         }
-                    
+
                     }
                 }
             }
@@ -422,9 +424,9 @@ public class KinectScript : MonoBehaviour
         Marshal.FreeHGlobal(destImg);
         Marshal.FreeHGlobal(sourceImg);
     }
-    public  void DrawLine(Texture2D a_Texture, int x1, int y1, int x2, int y2, Color a_Color)
+    public void DrawLine(Texture2D a_Texture, int x1, int y1, int x2, int y2, Color a_Color)
     {
-        
+
         int width = a_Texture.width;
         int height = a_Texture.height;
 
@@ -500,6 +502,8 @@ public class KinectScript : MonoBehaviour
 
     private void UpdateBodyData()
     {
+        if (bodyTexture == null)
+            return;
         // convert body index to a visual representation
         for (int i = 0; i < bodyIndexArray.Length; i += 4)
         {
@@ -515,17 +519,19 @@ public class KinectScript : MonoBehaviour
             }
             else
             {
-                // this pixel is not part of a player
-                // display black
-                
+                this.bodyArray[i] = 255;
+                this.bodyArray[i + 1] = 255;
+                this.bodyArray[i + 2] = 255;
+                this.bodyArray[i + 3] = 255;
+
             }
-            
+
 
         }
         bodyTexture.LoadRawTextureData(bodyArray);
         foreach (var body in bodies)
         {
-         
+
             if (body.IsTracked)
             {
                 for (int i = 0; i < body.Joints.Count; i++)
