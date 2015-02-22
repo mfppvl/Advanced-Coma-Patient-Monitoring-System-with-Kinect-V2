@@ -6,20 +6,12 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.IO;
 
+
 public class KinectManager : MonoBehaviour
 {
 
-    private static readonly uint[] BodyColor =
-        {
-            0x0000FF00,
-            0x00FF0000,
-            0xFFFF4000,
-            0x40FFFF00,
-            0xFF40FF00,
-            0xFF808000,
-        };
-    
-    private const int MapDepthToByte = 8000 / 256;
+
+  
     #region Viewers
     public int MaxFilesCount = 300;
     public GameObject depthView;
@@ -32,6 +24,7 @@ public class KinectManager : MonoBehaviour
     #endregion
 
     #region Buffers
+    Color[] whiteArea;
     ushort[] _infraredData;
     ushort[] _depthData;
 
@@ -53,18 +46,6 @@ public class KinectManager : MonoBehaviour
     Texture2D colorTexture;
     Texture2D faceTexture;
     #endregion
-    string WorkingDir = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData)+"\\KinectSupervision\\";
-
-    #region FileName collections
-    List<string> infraredFiles= new List<string>();
-    List<string> depthFiles = new List<string>();
-    List<string> bodyIndexFiles = new List<string>();
-    List<string> bodyFiles = new List<string>();
-    List<string> colorFiles = new List<string>();
-    List<string> faceFiles = new List<string>();
-    #endregion
-
-
 
     #region Kinect objects
     Dictionary<Windows.Kinect.JointType, CameraSpacePoint> lastBodyFrame = new Dictionary<JointType,CameraSpacePoint>();
@@ -97,10 +78,11 @@ public class KinectManager : MonoBehaviour
     
     Windows.Kinect.KinectSensor Sensor;
     Windows.Kinect.ColorFrameReader colorReader;
-    Windows.Kinect.DepthFrameReader depthReader;
-    Microsoft.Kinect.Face.FaceFrameSource faceSource;
+    Windows.Kinect.DepthFrameReader depthReader;    
     Windows.Kinect.BodyFrameReader bodyReader;
-    Microsoft.Kinect.Face.FaceFrameReader faceReader;
+    Microsoft.Kinect.Face.FaceFrameSource[] faceSource ;
+    Microsoft.Kinect.Face.FaceFrameReader[] faceReader;
+    Microsoft.Kinect.Face.FaceFrameResult[] faceFrameResults ;
     Windows.Kinect.BodyIndexFrameReader bodyIndexReader;
     Windows.Kinect.InfraredFrameReader infraredReader;
 
@@ -109,6 +91,23 @@ public class KinectManager : MonoBehaviour
     Windows.Kinect.CoordinateMapper mapper;
     Windows.Kinect.ColorSpacePoint[] colorSpace;
     #endregion
+
+    #region Other objects
+    private static readonly uint[] BodyColor =
+        {
+            0x0000FF00,
+            0x00FF0000,
+            0xFFFF4000,
+            0x40FFFF00,
+            0xFF40FF00,
+            0xFF808000,
+        };
+
+    private const int MapDepthToByte = 8000 / 256;
+    List<string> colorFiles = new List<string>();
+    string WorkingDir = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData) + "\\KinectSupervision\\";
+    Dictionary<DateTime, string> Allerts = new Dictionary<DateTime, string>();
+    #endregion
     // Use this for initialization
     void Start()
     {
@@ -116,6 +115,7 @@ public class KinectManager : MonoBehaviour
         {
             System.IO.Directory.CreateDirectory(WorkingDir);
         }
+        #region initialize skeleton threasholds
         SkeletonThreasholds.Add(Windows.Kinect.JointType.AnkleLeft, AnkleLeft);
         SkeletonThreasholds.Add(Windows.Kinect.JointType.AnkleRight, AnkleRight);
         SkeletonThreasholds.Add(Windows.Kinect.JointType.ElbowLeft, ElbowLeft);
@@ -141,8 +141,9 @@ public class KinectManager : MonoBehaviour
         SkeletonThreasholds.Add(Windows.Kinect.JointType.ThumbRight, ThumbRight);
         SkeletonThreasholds.Add(Windows.Kinect.JointType.WristLeft, WristLeft);
         SkeletonThreasholds.Add(Windows.Kinect.JointType.WristRight, WristRight);
+        #endregion
 
-
+        #region initialize buffer body joint array
         lastBodyFrame.Add(Windows.Kinect.JointType.AnkleLeft,new CameraSpacePoint());
         lastBodyFrame.Add(Windows.Kinect.JointType.AnkleRight, new CameraSpacePoint());
         lastBodyFrame.Add(Windows.Kinect.JointType.ElbowLeft, new CameraSpacePoint());
@@ -168,45 +169,52 @@ public class KinectManager : MonoBehaviour
         lastBodyFrame.Add(Windows.Kinect.JointType.ThumbRight, new CameraSpacePoint());
         lastBodyFrame.Add(Windows.Kinect.JointType.WristLeft, new CameraSpacePoint());
         lastBodyFrame.Add(Windows.Kinect.JointType.WristRight, new CameraSpacePoint());
-        
-        
-        
+        #endregion
+
+
+
     }
 
     // Update is called once per frame
     void Update()
-    {
-
+    {        
         if (Sensor == null || !Sensor.IsOpen)
         {
             Sensor = Windows.Kinect.KinectSensor.GetDefault();
             if (Sensor != null)
             {
+                Sensor.Open();
                 // allocate storage to store body objects
                 this.bodies = new Windows.Kinect.Body[this.Sensor.BodyFrameSource.BodyCount];
+                Debug.Log("bodies count " + bodies.Length.ToString());
                 // specify the required face frame results
-                Microsoft.Kinect.Face.FaceFrameFeatures faceFrameFeatures =
-                    Microsoft.Kinect.Face.FaceFrameFeatures.BoundingBoxInColorSpace
-                    //| FaceFrameFeatures.BoundingBoxInInfraredSpace
-                        | Microsoft.Kinect.Face.FaceFrameFeatures.PointsInColorSpace
-                    //| FaceFrameFeatures.PointsInInfraredSpace
-                        | Microsoft.Kinect.Face.FaceFrameFeatures.RotationOrientation
-                        | Microsoft.Kinect.Face.FaceFrameFeatures.FaceEngagement
-                    //| FaceFrameFeatures.Glasses
-                    //| FaceFrameFeatures.Happy
-                    //| FaceFrameFeatures.LeftEyeClosed
-                    //| FaceFrameFeatures.RightEyeClosed
-                        | Microsoft.Kinect.Face.FaceFrameFeatures.LookingAway
-                    //| FaceFrameFeatures.MouthMoved
-                    //| FaceFrameFeatures.MouthOpen
-                ;
-                this.faceSource = Microsoft.Kinect.Face.FaceFrameSource.Create(Sensor, 0, faceFrameFeatures);//create face source object
+                Microsoft.Kinect.Face. FaceFrameFeatures faceFrameFeatures =
+            Microsoft.Kinect.Face.FaceFrameFeatures.BoundingBoxInColorSpace
+            | Microsoft.Kinect.Face.FaceFrameFeatures.PointsInColorSpace
+            | Microsoft.Kinect.Face.FaceFrameFeatures.RotationOrientation
+            | Microsoft.Kinect.Face.FaceFrameFeatures.FaceEngagement
+            | Microsoft.Kinect.Face.FaceFrameFeatures.Glasses
+            | Microsoft.Kinect.Face.FaceFrameFeatures.Happy
+            | Microsoft.Kinect.Face.FaceFrameFeatures.LeftEyeClosed
+            | Microsoft.Kinect.Face.FaceFrameFeatures.RightEyeClosed
+            | Microsoft.Kinect.Face.FaceFrameFeatures.LookingAway
+            | Microsoft.Kinect.Face.FaceFrameFeatures.MouthMoved
+            | Microsoft.Kinect.Face.FaceFrameFeatures.MouthOpen;
+                int bodyCount = this.Sensor.BodyFrameSource.BodyCount;
+                faceReader = new Microsoft.Kinect.Face.FaceFrameReader[bodyCount];
+                faceSource = new Microsoft.Kinect.Face.FaceFrameSource[bodyCount];
+                
 
-                Sensor.Open();
+               
+                for (int i = 0; i < this.Sensor.BodyFrameSource.BodyCount; i++)
+                {
+                    faceSource[i] = Microsoft.Kinect.Face.FaceFrameSource.Create(Sensor, 0, faceFrameFeatures);//create face source object
+                    faceReader[i] = faceSource[i].OpenReader();// open face reader object
+                }
 
-
+                
                 // open the corresponding readers                
-                this.faceReader = this.faceSource.OpenReader();// open face reader object
+                
                 colorReader = Sensor.ColorFrameSource.OpenReader();
                 depthReader = Sensor.DepthFrameSource.OpenReader();
                 infraredReader = Sensor.InfraredFrameSource.OpenReader();
@@ -235,6 +243,9 @@ public class KinectManager : MonoBehaviour
                             colorTexture = new Texture2D(description.Width, description.Height, TextureFormat.RGBA32, false);
                             colorArray = new byte[description.BytesPerPixel * description.LengthInPixels];
                             whiteArray = new byte[description.BytesPerPixel * description.LengthInPixels];
+                            faceArray = new byte[description.BytesPerPixel * description.LengthInPixels];
+                            faceTexture = new Texture2D(description.Width, description.Height, TextureFormat.RGBA32, false);
+                            whiteArea = colorTexture.GetPixels();
 
                             for (int y = 1; y <= description.Height; y++)
                             {
@@ -253,7 +264,7 @@ public class KinectManager : MonoBehaviour
                             frame.CopyConvertedFrameDataToArray(colorArray, Windows.Kinect.ColorImageFormat.Rgba);
                             colorTexture.LoadRawTextureData(colorArray);
                             colorTexture.Apply();
-                            SaveToFile(colorTexture, colorFiles);
+                            SaveToFile();
                             colorView.renderer.material.mainTexture = colorTexture;
                         }
                     }
@@ -316,6 +327,7 @@ public class KinectManager : MonoBehaviour
                 }
 
             #endregion
+        
             #region BodyIndex process
 
             if (depthReader != null)
@@ -358,68 +370,96 @@ public class KinectManager : MonoBehaviour
                     {
 
                         if (bodyView != null)
-                        {
-                            Debug.Log("Bodies count " + frame.BodyCount.ToString());
-                            if (frame.BodyCount > 0)
-                            {
+                        {   
                                 frame.GetAndRefreshBodyData(bodies);
                                 UpdateBodyData();
                                 bodyView.renderer.material.mainTexture = bodyTexture;
-                            }
-                        }
-
-                    }
-                }
+                            
+                        }}}
             }
             #endregion
             #region Face process
 
-            if (faceReader != null)
-                // reading data from face render  source
-                using (var frame = faceReader.AcquireLatestFrame())
+            for (int i = 0; i < this.bodies.Length; i++)
+            {
+                // check if a valid face is tracked in this face source		
+                
+                if (faceSource[i].IsTrackingIdValid)
                 {
-                    if (frame != null)
+                    using (var frame = faceReader[i].AcquireLatestFrame())
                     {
-                        Debug.Log("Face tracking id " + frame.TrackingId.ToString());
-                        Debug.Log(frame.FaceFrameResult);
-                        if (frame.FaceFrameResult != null)
+                        if (frame != null)
                         {
-                            Debug.Log(string.Format("points count {0}", frame.FaceFrameResult.FacePointsInColorSpace));
-                            foreach (var p in frame.FaceFrameResult.FacePointsInColorSpace)
+                            var result = frame.FaceFrameResult;
+                            var rect = result.FaceBoundingBoxInColorSpace;
+                            //faceTexture.SetPixels(whiteArea);
+                            int x = rect.Left;
+                            int y = rect.Top;
+                            int w = rect.Bottom - rect.Top;
+                            int h = rect.Right - rect.Left;
+                            if (w != 0 && h != 0)
                             {
-                                Debug.Log(string.Format("point {0}, X {1}, Y {2}", p.Key, p.Value.X, p.Value.Y));
+                                Debug.Log(string.Format("x {0}, y {1}, width {2}, height {3}",
+                                    x, y, w, h));
+                                var c = colorTexture.GetPixels(x, y, w, h);
+                                faceTexture.Resize(w, h);
+                                faceTexture.SetPixels(c);
+                                faceTexture.Apply();                             
+                                faceView.renderer.material.mainTexture = faceTexture;
                             }
                         }
-
-
+                    }
+                }
+                else
+                {
+                    // check if the corresponding body is tracked 
+                    if (bodies[i] != null && bodies[i].IsTracked)
+                    {
+                        // update the face frame source to track this body
+                        faceSource[i].TrackingId = bodies[i].TrackingId;
 
                     }
                 }
+            }
 
             #endregion
+          
 
         }
     }
-    private void SaveToFile(Texture2D texture, List<string> files)
+
+  
+
+    #region Processing methods
+   
+    /// <summary>
+    /// Save screenshot to jpeg file for continiosly writing to video
+    /// </summary>
+    /// <param name="texture"></param>
+    /// <param name="files"></param>
+    private void SaveToFile()
     {
-        
+
         //int tm1 = Environment.TickCount;
-        if (files.Count >= MaxFilesCount)
+        if (colorFiles.Count >= MaxFilesCount)
         {
-            File.Delete(files[0]);
-            files.RemoveAt(0);
+            File.Delete(colorFiles[0]);
+            colorFiles.RemoveAt(0);
         }
 
         var filename = WorkingDir + "\\" + Guid.NewGuid().ToString() + ".jpg";
-        files.Add(filename);
+        colorFiles.Add(filename);
         Application.CaptureScreenshot(filename);
         //using (var fs = new FileStream(filename, FileMode.Create, FileAccess.Write))
         //{
         //    var b = texture.EncodeToJPG(60);
         //    fs.Write(b, 0, b.Length);
         //}
-//        Debug.Log(string.Format("encoding time {0}", Environment.TickCount - tm1));
+        //        Debug.Log(string.Format("encoding time {0}", Environment.TickCount - tm1));
     }
+    /// <summary>
+    /// process infrared data
+    /// </summary>
     private void UpdateInfraredData()
     {
         int index = 0;
@@ -433,6 +473,12 @@ public class KinectManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// process depth data
+    /// </summary>
+    /// <param name="depthFrameDataSize"></param>
+    /// <param name="minDepth"></param>
+    /// <param name="maxDepth"></param>
     private void UpdateDepthData(uint depthFrameDataSize, ushort minDepth, ushort maxDepth)
     {
         // convert depth to a visual representation
@@ -451,6 +497,9 @@ public class KinectManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// process body index data
+    /// </summary>
     private void UpdateBodyIndexData()
     {
         if (colorArray == null)
@@ -479,6 +528,9 @@ public class KinectManager : MonoBehaviour
 
         }
     }
+    /// <summary>
+    /// process
+    /// </summary>
     private void UpdateBodyData()
     {
         if (bodyTexture == null)
@@ -530,11 +582,8 @@ public class KinectManager : MonoBehaviour
                         }
                     }
                 }
-                if (lastBodyFrame != null)
 
-                    CheckJoints(body);
-
-
+                if (CheckJoints(body)) 
                 UpdateJointValues(body);
             }
             bodyTexture.Apply();
@@ -542,9 +591,13 @@ public class KinectManager : MonoBehaviour
         //aTexture.Apply();
     }
 
+    /// <summary>
+    /// check joints for changes to alert 
+    /// </summary>
+    /// <param name="newBody"></param>
+    /// <returns></returns>
     private bool CheckJoints(Body newBody)
-    {
-        Debug.Log("check events");
+    {   
         foreach (var joint in newBody.Joints)
         {
             if (joint.Value.TrackingState != TrackingState.NotTracked)
@@ -553,27 +606,33 @@ public class KinectManager : MonoBehaviour
                 if (Math.Abs(Math.Abs(joint.Value.Position.X) - Math.Abs(lastBodyFrame[joint.Key].X)) >
                     SkeletonThreasholds[joint.Key])
                 {
-                    Debug.Log(string.Format("Alert! Joint {0} old value X = {1}, new value X = {2}", joint.Key,
+                    string s = string.Format("Alert! Joint {0} old value X = {1}, new value X = {2}", joint.Key,
                         lastBodyFrame[joint.Key].X,
-                        joint.Value.Position.X));
+                        joint.Value.Position.X);
+                    Allerts.Add(System.DateTime.Now, s);
+                    Debug.Log(s);
                  
                     return true;
                 }
                 if (Math.Abs(Math.Abs(joint.Value.Position.Y) - Math.Abs(lastBodyFrame[joint.Key].Y)) >
                     SkeletonThreasholds[joint.Key])
                 {
-                    Debug.Log(string.Format("Alert! Joint {0} old value Y = {1}, new value Y = {2}", joint.Key,
-                        lastBodyFrame[joint.Key].Y,
-                        joint.Value.Position.Y));
-                    
+                    string s = string.Format("Alert! Joint {0} old value Y = {1}, new value Y = {2}", joint.Key,
+                         lastBodyFrame[joint.Key].Y,
+                         joint.Value.Position.Y);
+                    Allerts.Add(System.DateTime.Now, s);
+                    Debug.Log(s);
+
                     return true;
                 }
                 if (Math.Abs(Math.Abs(joint.Value.Position.Z) - Math.Abs(lastBodyFrame[joint.Key].Z)) >
                     SkeletonThreasholds[joint.Key])
                 {
-                    Debug.Log(string.Format("Alert! Joint {0} old value Z = {1}, new value Z = {2}", joint.Key,
-                        lastBodyFrame[joint.Key].Z,
-                        joint.Value.Position.Z));
+                    string s = string.Format("Alert! Joint {0} old value Z = {1}, new value Z = {2}", joint.Key,
+                         lastBodyFrame[joint.Key].Z,
+                         joint.Value.Position.Z);
+                    Allerts.Add(System.DateTime.Now, s);
+                    Debug.Log(s);
                     
                     return true;
                 }
@@ -583,6 +642,10 @@ public class KinectManager : MonoBehaviour
         return false;
     }
 
+    /// <summary>
+    /// update last body frame to check next one
+    /// </summary>
+    /// <param name="newbody"></param>
     private void UpdateJointValues(Body newbody)
     {
         foreach (var joint in newbody.Joints)
@@ -596,8 +659,14 @@ public class KinectManager : MonoBehaviour
             };
         }
     }
-
-
+   
+    /// <summary>
+    /// resize color array image to new one with specific size
+    /// </summary>
+    /// <param name="oldWidth"></param>
+    /// <param name="oldHeight"></param>
+    /// <param name="newWidth"></param>
+    /// <param name="newHeight"></param>
     private unsafe void Resize(int oldWidth, int oldHeight, int newWidth, int newHeight)
     {
 
@@ -673,6 +742,16 @@ public class KinectManager : MonoBehaviour
         Marshal.FreeHGlobal(destImg);
         Marshal.FreeHGlobal(sourceImg);
     }
+
+    /// <summary>
+    /// Draw skeleton lines
+    /// </summary>
+    /// <param name="a_Texture"></param>
+    /// <param name="x1"></param>
+    /// <param name="y1"></param>
+    /// <param name="x2"></param>
+    /// <param name="y2"></param>
+    /// <param name="a_Color"></param>
     private void DrawLine(Texture2D a_Texture, int x1, int y1, int x2, int y2, Color a_Color)
     {
 
@@ -749,6 +828,11 @@ public class KinectManager : MonoBehaviour
 
     }
   
+    /// <summary>
+    /// get parent joint of this one if exist 
+    /// </summary>
+    /// <param name="joint"></param>
+    /// <returns></returns>
     private JointType GetParentJoint(JointType joint)
     {
         switch (joint)
@@ -785,6 +869,11 @@ public class KinectManager : MonoBehaviour
 
         return (JointType)((int)joint - 1);
     }
+    /// <summary>
+    /// Get depth coordinates from skeleton point
+    /// </summary>
+    /// <param name="spacePos"></param>
+    /// <returns></returns>
     private Vector2 MapSpacePointToDepthCoords(CameraSpacePoint spacePos)
     {
         Vector2 vPoint = Vector2.zero;
@@ -811,4 +900,5 @@ public class KinectManager : MonoBehaviour
 
         return vPoint;
     }
+    #endregion
 }
