@@ -24,13 +24,13 @@ public class KinectManager : MonoBehaviour
     #endregion
 
     #region Buffers
-    Color[] whiteArea;
+    
     ushort[] _infraredData;
     ushort[] _depthData;
 
     byte[] _BodyIndexData;
     byte[] colorArray;
-    byte[] whiteArray;
+    
     byte[] depthArray;
     byte[] bodyArray;
     byte[] bodyIndexArray;
@@ -189,17 +189,20 @@ public class KinectManager : MonoBehaviour
                 Debug.Log("bodies count " + bodies.Length.ToString());
                 // specify the required face frame results
                 Microsoft.Kinect.Face. FaceFrameFeatures faceFrameFeatures =
-            Microsoft.Kinect.Face.FaceFrameFeatures.BoundingBoxInColorSpace
-            | Microsoft.Kinect.Face.FaceFrameFeatures.PointsInColorSpace
-            | Microsoft.Kinect.Face.FaceFrameFeatures.RotationOrientation
-            | Microsoft.Kinect.Face.FaceFrameFeatures.FaceEngagement
-            | Microsoft.Kinect.Face.FaceFrameFeatures.Glasses
-            | Microsoft.Kinect.Face.FaceFrameFeatures.Happy
-            | Microsoft.Kinect.Face.FaceFrameFeatures.LeftEyeClosed
-            | Microsoft.Kinect.Face.FaceFrameFeatures.RightEyeClosed
-            | Microsoft.Kinect.Face.FaceFrameFeatures.LookingAway
-            | Microsoft.Kinect.Face.FaceFrameFeatures.MouthMoved
-            | Microsoft.Kinect.Face.FaceFrameFeatures.MouthOpen;
+                            Microsoft.Kinect.Face.FaceFrameFeatures.BoundingBoxInColorSpace
+                    | Microsoft.Kinect.Face.FaceFrameFeatures.BoundingBoxInInfraredSpace
+                    | Microsoft.Kinect.Face.FaceFrameFeatures.PointsInColorSpace
+                    | Microsoft.Kinect.Face.FaceFrameFeatures.PointsInInfraredSpace
+                                | Microsoft.Kinect.Face.FaceFrameFeatures.RotationOrientation
+                                | Microsoft.Kinect.Face.FaceFrameFeatures.FaceEngagement
+                    | Microsoft.Kinect.Face.FaceFrameFeatures.Glasses
+                    | Microsoft.Kinect.Face.FaceFrameFeatures.Happy
+                    | Microsoft.Kinect.Face.FaceFrameFeatures.LeftEyeClosed
+                    | Microsoft.Kinect.Face.FaceFrameFeatures.RightEyeClosed
+                                | Microsoft.Kinect.Face.FaceFrameFeatures.LookingAway
+                    | Microsoft.Kinect.Face.FaceFrameFeatures.MouthMoved
+                    | Microsoft.Kinect.Face.FaceFrameFeatures.MouthOpen
+                                ;
                 int bodyCount = this.Sensor.BodyFrameSource.BodyCount;
                 faceReader = new Microsoft.Kinect.Face.FaceFrameReader[bodyCount];
                 faceSource = new Microsoft.Kinect.Face.FaceFrameSource[bodyCount];
@@ -242,23 +245,10 @@ public class KinectManager : MonoBehaviour
 
                             colorTexture = new Texture2D(description.Width, description.Height, TextureFormat.RGBA32, false);
                             colorArray = new byte[description.BytesPerPixel * description.LengthInPixels];
-                            whiteArray = new byte[description.BytesPerPixel * description.LengthInPixels];
+                          
                             faceArray = new byte[description.BytesPerPixel * description.LengthInPixels];
                             faceTexture = new Texture2D(description.Width, description.Height, TextureFormat.RGBA32, false);
-                            whiteArea = colorTexture.GetPixels();
-
-                            for (int y = 1; y <= description.Height; y++)
-                            {
-                                for (int x = 1; x <= description.Width; x += 4)
-                                {
-                                    whiteArray[x * y - 1] = 255;
-                                    whiteArray[x * y] = 255;
-                                    whiteArray[x * y + 1] = 255;
-                                    whiteArray[x * y + 2] = 255;
-                                }
-                            }
-
-                        }
+                                                  }
                         if (colorView != null)
                         {
                             frame.CopyConvertedFrameDataToArray(colorArray, Windows.Kinect.ColorImageFormat.Rgba);
@@ -393,19 +383,21 @@ public class KinectManager : MonoBehaviour
                             var result = frame.FaceFrameResult;
                             var rect = result.FaceBoundingBoxInColorSpace;
                             //faceTexture.SetPixels(whiteArea);
-                            int x = rect.Left;
-                            int y = rect.Top;
                             int w = rect.Bottom - rect.Top;
                             int h = rect.Right - rect.Left;
+                            int x = rect.Left -w/2;
+                            int y = rect.Top -h/2;
+                            
                             if (w != 0 && h != 0)
                             {
-                                Debug.Log(string.Format("x {0}, y {1}, width {2}, height {3}",
-                                    x, y, w, h));
-                                var c = colorTexture.GetPixels(x, y, w, h);
-                                faceTexture.Resize(w, h);
+                                //Debug.Log(string.Format("x {0}, y {1}, width {2}, height {3}",
+                                //    x, y, w, h));
+                                var c = colorTexture.GetPixels(x, y, w*2, h*2);
+                                faceTexture.Resize(w*2, h*2);
                                 faceTexture.SetPixels(c);
                                 faceTexture.Apply();                             
                                 faceView.renderer.material.mainTexture = faceTexture;
+                                CheckFace(result);
                             }
                         }
                     }
@@ -428,8 +420,31 @@ public class KinectManager : MonoBehaviour
         }
     }
 
-  
 
+
+    Dictionary<Microsoft.Kinect.Face.FaceProperty, DetectionResult> lastFaceResult = new Dictionary<Microsoft.Kinect.Face.FaceProperty, DetectionResult>();
+    public void CheckFace(Microsoft.Kinect.Face.FaceFrameResult res)
+    {
+        if (lastFaceResult.Count == 0)
+        {
+            foreach (var f in res.FaceProperties)
+            {
+                lastFaceResult.Add(f.Key, f.Value);
+            }
+        }
+        else
+        {
+            foreach (var f1 in res.FaceProperties)
+            {
+                if (f1.Value != lastFaceResult[f1.Key])
+                {
+                    string s = string.Format("face event {0}, old value {1}, new value {2}", f1.Key, lastFaceResult[f1.Key], f1.Value);
+                    Debug.Log(s);
+                    Allerts.Add(DateTime.Now, s);
+                }
+            }
+        }
+    }
     #region Processing methods
    
     /// <summary>
