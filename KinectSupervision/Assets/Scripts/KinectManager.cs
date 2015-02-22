@@ -1008,8 +1008,8 @@ public class KinectManager : MonoBehaviour
         if (videoRecorder == null)
         {
             string fname = DateTime.Now.ToString("yyyy-MM-dd_HH_mm_ss") + ".avi";
-            videoRecorder = new SharpAvi.Recorder(VideoFolder + fname,fname, SharpAvi.KnownFourCCs.Codecs.MotionJpeg, 70, 0, renderTexture.width, renderTexture.height, true);
-            
+            videoRecorder = new SharpAvi.Recorder(VideoFolder + fname, fname, SharpAvi.KnownFourCCs.Codecs.MotionJpeg, 70, 0, renderTexture.width, renderTexture.height, true);
+
         }
         AlertTime = Environment.TickCount;
         alertCount++;
@@ -1023,6 +1023,6 @@ public class KinectManager : MonoBehaviour
         Alerts.Add(DateTime.Now.ToString("HH:mm:ss - ") + alertCount.ToString() + ") " + s);
     }
     #endregion
-
+    
 
 }

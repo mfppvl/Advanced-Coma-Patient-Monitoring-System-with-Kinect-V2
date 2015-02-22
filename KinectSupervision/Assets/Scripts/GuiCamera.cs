@@ -64,7 +64,7 @@ public class GuiCamera : MonoBehaviour {
         GUILayout.EndScrollView();
         //GUILayout.EndScrollView();
         GUILayout.EndVertical();
-        //GUI.DragWindow();
+        GUI.DragWindow();
 
 
     }
