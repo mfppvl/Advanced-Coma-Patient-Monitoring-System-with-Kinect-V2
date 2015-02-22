@@ -1,0 +1,1 @@
+C:\Users\Micha_000\Documents\GitHub\Advanced-Coma-Patient-Monitoring-System-with-Kinect-V2\KinectSupervision\obj\Debug\Assembly-CSharp-Editor-vs.csprojResolveAssemblyReference.cache

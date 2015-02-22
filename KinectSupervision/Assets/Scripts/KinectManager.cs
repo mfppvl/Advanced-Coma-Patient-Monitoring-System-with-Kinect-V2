@@ -10,7 +10,7 @@ using System.IO;
 public class KinectManager : MonoBehaviour
 {
     private RenderTexture renderTexture;
-    private Texture2D sourceRender, destinationRender;
+    private Texture2D sourceRender;
 
 
     #region Viewers
@@ -95,6 +95,7 @@ public class KinectManager : MonoBehaviour
 
     #region Other objects
 
+    public int MinVideoRecordTime = 30;
     int MaxAlertCount = 100;
 
     private static readonly uint[] BodyColor =
@@ -107,50 +108,41 @@ public class KinectManager : MonoBehaviour
             0xFF808000,
         };
 
-    public GameObject GuiCam;
+
+    int AlertTime = 0;
+    public static Dictionary<string, string> VideoFiles = new Dictionary<string, string>();
+    public static SharpAvi.Recorder videoRecorder;
+    Dictionary<Microsoft.Kinect.Face.FaceProperty, DetectionResult> lastFaceResult = new Dictionary<Microsoft.Kinect.Face.FaceProperty, DetectionResult>();
     public static List<string> colorFiles = new List<string>();
     public static string WorkingDir = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData) + "\\KinectSupervision\\";
+    public static string VideoFolder = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments) + "\\SkyDrive\\Documents\\";
     private const int MapDepthToByte = 8000 / 256;
-    private void SaveToFile()
-    {
-
-        camera.targetTexture = renderTexture;
-        camera.Render();
-        RenderTexture.active = renderTexture;
-        sourceRender.ReadPixels(new Rect(0.0f, 0.0f, renderTexture.width, renderTexture.height), 0, 0);
-
-        //int tm1 = Environment.TickCount;
-        if (colorFiles.Count >= MaxFilesCount)
-        {
-            File.Delete(colorFiles[0]);
-            colorFiles.RemoveAt(0);
-        }
-
-        var filename = WorkingDir + "\\" + Guid.NewGuid().ToString() + ".jpg";
-        colorFiles.Add(filename);
-
-        File.WriteAllBytes(filename, sourceRender.EncodeToJPG());
+    private System.IO.Stream currentVideoStream;
 
 
 
-    }
     public static List<string> Alerts = new List<string>();
     #endregion
     // Use this for initialization
     void Start()
     {
-       
+
         renderTexture = new RenderTexture(Screen.width, Screen.height, 24);
         sourceRender = new Texture2D(Screen.width, Screen.height);
-        destinationRender = new Texture2D(Screen.width, Screen.height);
+
         if (!System.IO.Directory.Exists(WorkingDir))
         {
             System.IO.Directory.CreateDirectory(WorkingDir);
         }
         else
         {
-            System.IO.Directory.Delete(WorkingDir,true);
+            System.IO.Directory.Delete(WorkingDir, true);
             System.IO.Directory.CreateDirectory(WorkingDir);
+        }
+
+        if (!System.IO.Directory.Exists(VideoFolder))
+        {
+            System.IO.Directory.CreateDirectory(VideoFolder);
         }
 
 
@@ -235,9 +227,6 @@ public class KinectManager : MonoBehaviour
                     | Microsoft.Kinect.Face.FaceFrameFeatures.PointsInColorSpace
                     | Microsoft.Kinect.Face.FaceFrameFeatures.PointsInInfraredSpace
                                 | Microsoft.Kinect.Face.FaceFrameFeatures.RotationOrientation
-                                | Microsoft.Kinect.Face.FaceFrameFeatures.FaceEngagement
-                    | Microsoft.Kinect.Face.FaceFrameFeatures.Glasses
-                    | Microsoft.Kinect.Face.FaceFrameFeatures.Happy
                     | Microsoft.Kinect.Face.FaceFrameFeatures.LeftEyeClosed
                     | Microsoft.Kinect.Face.FaceFrameFeatures.RightEyeClosed
                                 | Microsoft.Kinect.Face.FaceFrameFeatures.LookingAway
@@ -273,7 +262,7 @@ public class KinectManager : MonoBehaviour
         if (Sensor != null && Sensor.IsOpen && Sensor.IsAvailable)
         {
 
-            
+
 
 
             #region Color process
@@ -447,12 +436,17 @@ public class KinectManager : MonoBehaviour
                             {
                                 //Debug.Log(string.Format("x {0}, y {1}, width {2}, height {3}",
                                 //    x, y, w, h));
-                                var c = colorTexture.GetPixels(x, y, w * 2, h * 2);
-                                faceTexture.Resize(w * 2, h * 2);
-                                faceTexture.SetPixels(c);
-                                faceTexture.Apply();
-                                faceView.renderer.material.mainTexture = faceTexture;
-                                CheckFace(result);
+                                try
+                                {
+                                    var c = colorTexture.GetPixels(x, y, w * 2, h * 2);
+                                    faceTexture.Resize(w * 2, h * 2);
+                                    faceTexture.SetPixels(c);
+                                    faceTexture.Apply();
+                                    faceView.renderer.material.mainTexture = faceTexture;
+                                    CheckFace(result);
+                                }
+                                catch {  Debug.Log(string.Format("x {0}, y {1}, width {2}, height {3}",
+                                    x, y, w, h));};
                             }
                         }
                     }
@@ -470,17 +464,38 @@ public class KinectManager : MonoBehaviour
             }
 
             #endregion
-         
+
+        }
+        if (videoRecorder!=null && AlertTime > 0 && Environment.TickCount - AlertTime >= MinVideoRecordTime * 1000)
+        {
+
+            VideoFiles.Add(videoRecorder.ShortName, videoRecorder.FileName );
+            videoRecorder.Dispose();
+            
+            videoRecorder = null;
+            AlertTime = 0;
+            
+            Debug.Log("Video stopped");
         }
     }
 
-    Dictionary<Microsoft.Kinect.Face.FaceProperty, DetectionResult> lastFaceResult = new Dictionary<Microsoft.Kinect.Face.FaceProperty, DetectionResult>();
+    void OnApplicationQuit()
+    {
+        if (videoRecorder != null)
+            videoRecorder.Dispose();
+    }
+
+
+    
+    
+
+    #region Processing methods
     public void CheckFace(Microsoft.Kinect.Face.FaceFrameResult res)
     {
         if (lastFaceResult.Count == 0)
         {
             foreach (var f in res.FaceProperties)
-            {
+            {   
                 lastFaceResult.Add(f.Key, f.Value);
             }
         }
@@ -488,15 +503,51 @@ public class KinectManager : MonoBehaviour
         {
             foreach (var f1 in res.FaceProperties)
             {
-                if (f1.Value != lastFaceResult[f1.Key])
+                if (f1.Key!= Microsoft.Kinect.Face.FaceProperty.Engaged
+                    &&
+                    f1.Key != Microsoft.Kinect.Face.FaceProperty.Happy
+                    &&
+                    f1.Key != Microsoft.Kinect.Face.FaceProperty.WearingGlasses
+                    &&
+                    f1.Value != lastFaceResult[f1.Key] && f1.Value != DetectionResult.Maybe)
                 {
                     string s = string.Format("face event {0}, old value {1}, new value {2}", f1.Key, lastFaceResult[f1.Key], f1.Value);
                     AddAlert(s);
+                    return;
                 }
             }
         }
     }
-    #region Processing methods
+
+
+
+    private void SaveToFile()
+    {
+
+
+        camera.targetTexture = renderTexture;
+        camera.Render();
+        RenderTexture.active = renderTexture;
+        sourceRender.ReadPixels(new Rect(0.0f, 0.0f, renderTexture.width, renderTexture.height), 0, 0);
+      
+
+        //int tm1 = Environment.TickCount;
+        if (colorFiles.Count >= MaxFilesCount)
+        {
+            try
+            {
+                File.Delete(colorFiles[0]);
+                colorFiles.RemoveAt(0);
+            }
+            catch { };
+        }
+
+        var filename = WorkingDir + "\\" + Guid.NewGuid().ToString() + ".jpg";
+        var bytes= sourceRender.EncodeToJPG(70);
+        File.WriteAllBytes(filename, bytes);
+        colorFiles.Add(filename);
+
+    }
 
     /// <summary>
     /// Save screenshot to jpeg file for continiosly writing to video
@@ -504,7 +555,7 @@ public class KinectManager : MonoBehaviour
     /// <param name="texture"></param>
     /// <param name="files"></param>
 
-    bool captureing = false;
+
 
     /// <summary>
     /// process infrared data
@@ -954,6 +1005,13 @@ public class KinectManager : MonoBehaviour
     /// <param name="s"></param>
     public void AddAlert(string s)
     {
+        if (videoRecorder == null)
+        {
+            string fname = DateTime.Now.ToString("yyyy-MM-dd_HH_mm_ss") + ".avi";
+            videoRecorder = new SharpAvi.Recorder(VideoFolder + fname,fname, SharpAvi.KnownFourCCs.Codecs.MotionJpeg, 70, 0, renderTexture.width, renderTexture.height, true);
+            
+        }
+        AlertTime = Environment.TickCount;
         alertCount++;
         Debug.Log(s);
 
