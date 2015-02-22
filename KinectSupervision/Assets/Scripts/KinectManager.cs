@@ -261,10 +261,6 @@ public class KinectManager : MonoBehaviour
             #endregion
         if (Sensor != null && Sensor.IsOpen && Sensor.IsAvailable)
         {
-
-
-
-
             #region Color process
             if (colorReader != null)
                 using (var frame = colorReader.AcquireLatestFrame())
@@ -445,8 +441,11 @@ public class KinectManager : MonoBehaviour
                                     faceView.renderer.material.mainTexture = faceTexture;
                                     CheckFace(result);
                                 }
-                                catch {  Debug.Log(string.Format("x {0}, y {1}, width {2}, height {3}",
-                                    x, y, w, h));};
+                                catch
+                                {
+                                    Debug.Log(string.Format("x {0}, y {1}, width {2}, height {3}",
+                                        x, y, w, h));
+                                };
                             }
                         }
                     }

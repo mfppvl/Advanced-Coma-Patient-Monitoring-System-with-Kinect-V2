@@ -56,6 +56,18 @@ namespace SharpAvi
                 IsBackground = true
             };
 
+
+            while (KinectManager.colorFiles.Count > 0)
+            {
+
+                var buffer = System.IO.File.ReadAllBytes(KinectManager.colorFiles[0]);
+                videoStream.WriteFrame(true, buffer, 0, buffer.Length);
+                System.IO.File.Delete(KinectManager.colorFiles[0]);
+                KinectManager.colorFiles.RemoveAt(0);
+
+
+
+            }
             screenThread.Start();
 
 
@@ -108,18 +120,16 @@ namespace SharpAvi
             {
                 var timestamp = DateTime.Now;
 
-                
+
                 if (KinectManager.colorFiles.Count > 0)
                 {
-                    using (var fs = new System.IO.FileStream(KinectManager.colorFiles[0], System.IO.FileMode.Open))
-                    {                        
-                        var buffer = new byte[fs.Length];
-                        fs.Read(buffer, 0, buffer.Length);
-                        videoStream.WriteFrame(true, buffer, 0, buffer.Length);
-                        KinectManager.colorFiles.RemoveAt(0);
-                        Thread.Sleep(80);
-                    }
+                    var buffer = System.IO.File.ReadAllBytes(KinectManager.colorFiles[0]);
+                    videoStream.WriteFrame(true, buffer, 0, buffer.Length);
+                    System.IO.File.Delete(KinectManager.colorFiles[0]);
+                    KinectManager.colorFiles.RemoveAt(0);
                 }
+                else
+                    Thread.Sleep(30);
 
                 timeTillNextFrame = timestamp + frameInterval - DateTime.Now;
                 if (timeTillNextFrame < TimeSpan.Zero)
