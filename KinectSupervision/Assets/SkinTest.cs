@@ -96,7 +96,10 @@ public class SkinTest : MonoBehaviour
         GUILayout.Button("Im a Button");
         GUILayout.TextField("Im a textfield");
 
-        GUILayout.TextArea("Im a textfield\nIm the second line\nIm the third line\nIm the fourth line\nsdfsdfsdffsd\nsdfsdfsfsd\nsdfsdfsdf\nsdfsdfsd");
+        GUILayout.TextArea(@"Im a textfield\nIm the second line\nIm the third line\nIm the fourth line\nsdfsdfsdffsd\nsdfsdfsfsd\nsdfsdfsdf\nsdfsdfsd
+Im a textfield\nIm the second line\nIm the third line\nIm the fourth line\nsdfsdfsdffsd\nsdfsdfsfsd\nsdfsdfsdf\nsdfsdfsd
+Im a textfield\nIm the second line\nIm the third line\nIm the fourth line\nsdfsdfsdffsd\nsdfsdfsfsd\nsdfsdfsdf\nsdfsdfsd
+Im a textfield\nIm the second line\nIm the third line\nIm the fourth line\nsdfsdfsdffsd\nsdfsdfsfsd\nsdfsdfsdf\nsdfsdfsd");
         blnToggleState = GUILayout.Toggle(blnToggleState, "Im a Toggle button");
         GUILayout.EndVertical();
         GUILayout.BeginVertical();

@@ -52,6 +52,7 @@
      <Compile Include="Assets\Kinect\Scripts\DepthSourceGeometryView.cs" />
      <Compile Include="Assets\Kinect\Scripts\DepthSourceManager.cs" />
      <Compile Include="Assets\Kinect\Scripts\DisableOnStart.cs" />
+     <Compile Include="Assets\ScreenCapture.cs" />
      <Compile Include="Assets\Scripts\KinectManager.cs" />
      <Compile Include="Assets\SkinTest.cs" />
      <None Include="Assets\Plugins\x86\NuiDatabase\HDFaceTracker\ViewModel\left.p.txt" />
