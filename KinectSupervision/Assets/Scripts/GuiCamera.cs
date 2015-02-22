@@ -45,6 +45,7 @@ public class GuiCamera : MonoBehaviour {
         rctWindow2 = GUI.Window(1, rctWindow2, VideoWindows, "Alert video", GUI.skin.GetStyle("window"));
     }
     Vector2 scrollpos = new Vector2();
+    Vector2 scrollpos2 = new Vector2();
 
 
     void AlertWindow(int windowID)
@@ -52,9 +53,7 @@ public class GuiCamera : MonoBehaviour {
 
 
         GUILayout.BeginVertical();
-        scrollpos = GUILayout.BeginScrollView(scrollpos, GUI.skin.GetStyle("Box"));
-        //scrollpos = GUILayout.BeginScrollView(scrollpos, GUILayout.Width(width - 10), GUILayout.Height(height-10));
-        //scrollpos = GUILayout.BeginScrollView(scrollpos,Gui)
+        scrollpos = GUILayout.BeginScrollView(scrollpos, GUI.skin.GetStyle("Box"));        
         string text = "";
         foreach (var s in KinectManager.Alerts)
         {
@@ -65,7 +64,7 @@ public class GuiCamera : MonoBehaviour {
         GUILayout.EndScrollView();
         //GUILayout.EndScrollView();
         GUILayout.EndVertical();
-        GUI.DragWindow();
+        //GUI.DragWindow();
 
 
     }
@@ -73,7 +72,7 @@ public class GuiCamera : MonoBehaviour {
     void VideoWindows(int windowID)
     {
         GUILayout.BeginVertical();
-        scrollpos = GUILayout.BeginScrollView(scrollpos, GUI.skin.GetStyle("Box"));
+        scrollpos2 = GUILayout.BeginScrollView(scrollpos2, GUI.skin.GetStyle("Box"));
         //scrollpos = GUILayout.BeginScrollView(scrollpos, GUILayout.Width(width - 10), GUILayout.Height(height-10));
         //scrollpos = GUILayout.BeginScrollView(scrollpos,Gui)
         string text = "";
